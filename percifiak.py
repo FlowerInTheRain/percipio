@@ -8,22 +8,21 @@ import json
 
 
 # Lancement d'un webdriver
-def init_webdriver(debug, firefox_location)-> webdriver:
+def init_webdriver(debug, browser_type)-> webdriver:
     if not debug:
         os.environ['MOZ_HEADLESS'] = '1'
 
     # Les options du navigateur, ici Firefox
     # l'emplacement du navigateur
-    options = webdriver.FirefoxOptions()
-    options.binary_location = firefox_location
 
     # Lancement du browser
     # Options : -> emplacement exécutable geckodriver
     #           -> emplacement logs geckodriver
     #           -> options du navigateur
-    browser = webdriver.Firefox(
-        executable_path='selenium/geckodriver.exe', service_log_path='selenium/geckodriver.log', options=options)
-
+    if(browser_type == "ff"):
+        browser = webdriver.Firefox()
+    elif(browser_type == "ch")
+        browser = webdriver.Chrome()
     # browser.maximize_window()
 
     return browser
@@ -62,7 +61,7 @@ def main():
     # Argument obligatoire
     usr = ''
     pwd = ''
-    browser_location = ''
+    browser_type = ''
 
     for o, a in opts:
         if o in ("-d", "--debug"):
@@ -78,7 +77,7 @@ def main():
             pwd = a
 
         elif o in ("-b", "--browser"):
-            browser_location = a
+            browser_type = a
 
         else:
             assert False, "unhandled option"
@@ -92,60 +91,37 @@ def main():
     if pwd != '':
         conf["password"] = pwd
 
-    if browser_location != '':
-        conf["browser"]["location"] = browser_location
-
     with open("conf.json", "w") as jsonFile:
         json.dump(conf, jsonFile)
 
-    if conf["browser"]["location"] == '' or conf["password"] == '' or conf["username"] == '':
+    if browser_type == '' or conf["password"] == '' or conf["username"] == '':
         print("Il manque un element a configurer : nom d'utilisateur, mot de passe ou la location du navigateur")
         sys.exit()
 
-    browser = init_webdriver(debug, conf["browser"]["location"])
+    browser = init_webdriver(debug, browser_type)
 
     tools = Tools(browser)
 
     tools.connection(conf["username"], conf["password"])
 
-    tools.go_to_assignement()
+    tools.go_to_assignment()
 
-    sleep(2)
+    sleep(3)
 
-    courses, videos = tools.get_all_cours()
+    courses = tools.get_all_cours()
 
     sleep(1)
 
-    for video in videos:
-        print("Début video : " + video)
-        tools.get_video(video)
+    for i in range(1, len(courses)):
+
+        print("Starting courses with URL : ")
+        print(courses[i])
+
+        tools.get_cours(courses[i])
 
         tools.launch_video()
 
-        while browser.find_element_by_xpath("//div[@class='jw-icon jw-icon-inline "
-                                            "jw-button-color jw-reset jw-icon-playback']").get_attribute('aria-label') \
-                != 'Play':
-            sleep(10)
-
-        print("Fin video : " + video)
-
-    for course in courses:
-
-        print("Début du cours : " + course)
-
-        tools.get_cours(course)
-
-        sleep(1)
-
-        tools.launch_video()
-
-        sleep(1)
-
-        # Tant que le cours n'est pas fini
-        while tools.get_completion_status() is False:
-            sleep(5)
-
-        print("Fin du cours : " + course)
+        print("Fin du cours : " + courses[i])
 
         test_url = tools.check_for_test()
 
@@ -161,17 +137,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
