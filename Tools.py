@@ -61,7 +61,7 @@ class Tools:
         self.browser.get('https://reseau-ges.percipio.com/assignments')
         return True
 
-    def get_all_cours(self):
+    def get_all_courses(self):
         btn_show_detail = self.browser.find_elements(By.CSS_SELECTOR,
             ".Button---root---2BQqW.Button---flat---fb6Ta.Button---medium---1CC5_.Button---center---13Oaw")
         for btn in btn_show_detail:
