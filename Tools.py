@@ -89,10 +89,18 @@ class Tools:
         EC.presence_of_element_located((By.CLASS_NAME, "ContentItem---link---ILx7P")))
 
         videos = self.browser.find_elements(By.CLASS_NAME,'ContentItem---link---ILx7P')
-        links_hrefs = [link.get_attribute('href') for link in videos]
-        max_duration = 0
-        for i in range(0,len(links_hrefs) - 2) :
-            print(links_hrefs[i])
+        status_span = self.browser.find_elements(By.CSS_SELECTOR,".ContentItem---status---w1Me0")[::2]
+
+        print("Removing watched videos from course")
+        unwatched_videos = []
+        for i in range(0, len(status_span) -2):
+            status_text = status_span[i].find_element(By.XPATH,"./child::*").text
+            if(status_text != 'WATCHED'):
+                unwatched_videos.append(videos[i])
+
+        links_hrefs = [link.get_attribute('href') for link in unwatched_videos]
+        for i in range(0,len(links_hrefs)) :
+            print("Accessing video : " + links_hrefs[i])
             self.get_video(links_hrefs[i])
             sleep(2)
             WebDriverWait(self.browser, 5).until(
@@ -112,12 +120,13 @@ class Tools:
             sleep(0.5)
 
             self.browser.find_element("xpath","//span[@id='current_value_prefix'][text()='2']").click
-            duration = self.browser.find_element(By.CLASS_NAME,"vjs-duration-display").text
-            duration_seconds = sum(x * int(t) for x, t in zip([1, 60, 3600], reversed(duration.split(":"))))
-            if duration_seconds > max_duration:
-                max_duration = duration_seconds + 2
-        sleep(max_duration)
+            print("Watching video with double speed")
 
+            duration = self.browser.find_element(By.CLASS_NAME,"vjs-duration-display").text
+            duration_seconds = (sum(x * int(t) for x, t in zip([1, 60, 3600], reversed(duration.split(":")))) + 2) / 2
+            print("Sleeping until end of video for current course for " + str(duration_seconds ) + " seconds")
+            sleep(duration_seconds)
+        print("Videos for current course watched")
 
     def get_completion_status(self) -> bool:
         div_completion_all = self.browser.find_element_by_xpath("//div[@class='ProgressBar---trail---3y2hW']")

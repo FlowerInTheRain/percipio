@@ -21,7 +21,7 @@ def init_webdriver(debug, browser_type)-> webdriver:
     #           -> options du navigateur
     if(browser_type == "ff"):
         browser = webdriver.Firefox()
-    elif(browser_type == "ch")
+    elif(browser_type == "ch"):
         browser = webdriver.Chrome()
     # browser.maximize_window()
 
