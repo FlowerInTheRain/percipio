@@ -61,7 +61,7 @@ class Tools:
         self.browser.get('https://reseau-ges.percipio.com/assignments')
         return True
 
-    def get_all_courses(self):
+    def get_all_cours(self):
         btn_show_detail = self.browser.find_elements(By.CSS_SELECTOR,
             ".Button---root---2BQqW.Button---flat---fb6Ta.Button---medium---1CC5_.Button---center---13Oaw")
         for btn in btn_show_detail:
@@ -90,7 +90,12 @@ class Tools:
 
         videos = self.browser.find_elements(By.CLASS_NAME,'ContentItem---link---ILx7P')
         status_span = self.browser.find_elements(By.CSS_SELECTOR,".ContentItem---status---w1Me0")[::2]
-
+        titles = self.browser.find_elements(By.CSS_SELECTOR,".ContentItem---title---kdZSE")
+        video_titles = []
+        for title in titles:
+            title_text = title.find_element(By.XPATH,
+        "./child::*").find_elements(By.XPATH,"./child::*")[0].text
+            video_titles.append(title_text)
         print("Removing watched videos from course")
         unwatched_videos = []
         for i in range(0, len(status_span) -2):
@@ -99,33 +104,33 @@ class Tools:
                 unwatched_videos.append(videos[i])
 
         links_hrefs = [link.get_attribute('href') for link in unwatched_videos]
-        for i in range(0,len(links_hrefs)) :
-            print("Accessing video : " + links_hrefs[i])
+        for i in range(0,len(links_hrefs) - 2) :
+            print("Accessing video : " + video_titles[i])
             self.get_video(links_hrefs[i])
-            sleep(2)
             WebDriverWait(self.browser, 5).until(
                   EC.presence_of_element_located((By.CSS_SELECTOR, ".vjs-play-control.vjs-control.vjs-button")))
             play = self.browser.find_elements(By.CSS_SELECTOR, '.vjs-play-control.vjs-control.vjs-button')
             play[0].click()
             sleep(1)
-            play[0].send_keys(Keys.PAGE_DOWN);
+            play[0].send_keys(Keys.PAGE_DOWN)
 
             # Gotta go fast
             self.browser.find_element('id','video-player-settings-button').click()
 
-            sleep(0.5)
+            sleep(1)
 
             self.browser.find_element('id','speed').click()
 
-            sleep(0.5)
+            sleep(1)
 
-            self.browser.find_element("xpath","//span[@id='current_value_prefix'][text()='2']").click
+            self.browser.find_element("xpath","//span[@id='current_value_prefix'][text()='2']").click()
             print("Watching video with double speed")
 
             duration = self.browser.find_element(By.CLASS_NAME,"vjs-duration-display").text
-            duration_seconds = (sum(x * int(t) for x, t in zip([1, 60, 3600], reversed(duration.split(":")))) + 2) / 2
+            duration_seconds = (sum(x * int(t) for x, t in zip([1, 60, 3600], reversed(duration.split(":")))) + 5) / 2
             print("Sleeping until end of video for current course for " + str(duration_seconds ) + " seconds")
             sleep(duration_seconds)
+            print("Finished watching the video "+ video_titles[i])
         print("Videos for current course watched")
 
     def get_completion_status(self) -> bool:

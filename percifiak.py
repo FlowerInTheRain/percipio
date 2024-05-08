@@ -21,12 +21,10 @@ def init_webdriver(debug, browser_type)-> webdriver:
     #           -> options du navigateur
     if(browser_type == "ff"):
         browser = webdriver.Firefox()
-    #elif(browser_type == "ch"):
-    #    browser = webdriver.Chrome()
+    elif(browser_type == "ch"):
+        browser = webdriver.Chrome()
     # browser.maximize_window()
-    else :
-        print("Unrecognized browser")
-        sys.exit()
+
     return browser
 
 
@@ -110,7 +108,7 @@ def main():
 
     sleep(3)
 
-    courses = tools.get_all_courses()
+    courses = tools.get_all_cours()
 
     sleep(1)
 
@@ -125,11 +123,11 @@ def main():
 
         print("Fin du cours : " + courses[i])
 
-        test_url = tools.check_for_test()
+        #test_url = tools.check_for_test()
 
-        if test_url != '':
-            browser.get(test_url)
-            tools.passing_test()
+        #if test_url != '':
+        #    browser.get(test_url)
+        #    tools.passing_test()
 
     print('Tout les cours sont fini !')
 
