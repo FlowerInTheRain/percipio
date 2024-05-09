@@ -95,7 +95,8 @@ def main():
         json.dump(conf, jsonFile)
 
     if browser_type == '' or conf["password"] == '' or conf["username"] == '':
-        print("Il manque un element a configurer : nom d'utilisateur, mot de passe ou la location du navigateur")
+        print(Tools.prefix +("Il manque un element a configurer : nom d'utilisateur, mot de passe ou la location du "
+                            "navigateur"))
         sys.exit()
 
     browser = init_webdriver(debug, browser_type)
@@ -108,28 +109,26 @@ def main():
 
     sleep(3)
 
-    courses = tools.get_all_cours()
+    courses = tools.get_all_courses()
 
     sleep(1)
 
     for i in range(1, len(courses)):
 
-        print("Starting courses with URL : ")
-        print(courses[i])
+        print(Tools.prefix +"Starting courses with URL : " + courses[i])
 
         tools.get_cours(courses[i])
 
-        tools.launch_video()
+        test_url = tools.launch_video()
+        course_title = tools.get_course_name()
+        tools.get_test(test_url)
+        print(Tools.prefix + browser.current_url)
 
-        print("Fin du cours : " + courses[i])
+        if test_url is not None:
+            tools.pass_test()
+        print(Tools.prefix + "Fin du cours : " + course_title)
 
-        #test_url = tools.check_for_test()
-
-        #if test_url != '':
-        #    browser.get(test_url)
-        #    tools.passing_test()
-
-    print('Tout les cours sont fini !')
+    print(Tools.prefix + 'Tout les cours sont fini !')
 
     # Fin du programme
     browser.quit()

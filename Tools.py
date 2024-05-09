@@ -1,58 +1,59 @@
-from dataclasses import dataclass
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
-from time import sleep
 import json
-import sys
+from copy import copy
+from dataclasses import dataclass
+from time import sleep
+
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from selenium import webdriver
+
 
 @dataclass
 class Tools:
     browser: webdriver
     url = 'https://reseau-ges.percipio.com'
-
+    prefix = "===== "
     def connection(self, usr: str, pwd: str) -> bool:
-        print("Logging in")
+        print(self.prefix + "Logging in")
         # On dit au navigateur d'aller sur l'url suivant
         self.browser.get('https://reseau-ges.percipio.com/login%2F#/')
 
         sleep(2)
 
         # type text
-        text_area = self.browser.find_element('id','loginName')
+        text_area = self.browser.find_element('id', 'loginName')
         text_area.send_keys(usr)
 
         # click submit button
-        next_btn = self.browser.find_element("xpath","//button[@class='Button---root---2BQqW Button---primary---1O3lq "
+        next_btn = self.browser.find_element("xpath", "//button[@class='Button---root---2BQqW Button---primary---1O3lq "
                                                       "Button---small---3PMLN Button---center---13Oaw']")
         next_btn.click()
 
         sleep(1)
 
         # type text
-        text_area = self.browser.find_element('id','password')
+        text_area = self.browser.find_element('id', 'password')
         text_area.send_keys(pwd)
 
         # click submit button
-        submit_button = self.browser.find_element("xpath","//button[@class='Button---root---2BQqW "
+        submit_button = self.browser.find_element("xpath", "//button[@class='Button---root---2BQqW "
                                                            "Button---primary---1O3lq Button---small---3PMLN "
                                                            "Button---center---13Oaw']")
         submit_button.click()
 
         sleep(5)
-        print("Logged in")
+        print(self.prefix + "Logged in")
 
         return True
 
     def check_exists_by_xpath(self, xpath) -> bool:
         try:
-            self.browser.find_element_by_xpath(xpath)
+            self.browser.find_element(By.XPATH, xpath)
         except NoSuchElementException:
             return False
         return True
@@ -61,14 +62,14 @@ class Tools:
         self.browser.get('https://reseau-ges.percipio.com/assignments')
         return True
 
-    def get_all_cours(self):
+    def get_all_courses(self):
         btn_show_detail = self.browser.find_elements(By.CSS_SELECTOR,
-            ".Button---root---2BQqW.Button---flat---fb6Ta.Button---medium---1CC5_.Button---center---13Oaw")
+                                                     ".Button---root---2BQqW.Button---flat---fb6Ta.Button---medium---1CC5_.Button---center---13Oaw")
         for btn in btn_show_detail:
             ActionChains(self.browser).move_to_element(btn).click().perform()
             sleep(1)
 
-        a_courses = self.browser.find_elements(By.CSS_SELECTOR,".Link---root---U3vzY.Link---focus---V5Bo7")
+        a_courses = self.browser.find_elements(By.CSS_SELECTOR, ".Link---root---U3vzY.Link---focus---V5Bo7")
         courses = []
         for a in a_courses:
             courses.append(a.get_attribute('href'))
@@ -83,55 +84,63 @@ class Tools:
     def get_videos(self, video_id: str) -> None:
         self.browser.get(self.url + '/videos/' + video_id)
 
-    def launch_video(self) -> None:
+    def get_test(self, test_url: str) -> None:
+        self.browser.get(test_url)
+
+    def launch_video(self) -> str:
         # Lancement de la vidéo
         WebDriverWait(self.browser, 5).until(
-        EC.presence_of_element_located((By.CLASS_NAME, "ContentItem---link---ILx7P")))
+            EC.presence_of_element_located((By.CLASS_NAME, "ContentItem---link---ILx7P")))
 
-        videos = self.browser.find_elements(By.CLASS_NAME,'ContentItem---link---ILx7P')
-        status_span = self.browser.find_elements(By.CSS_SELECTOR,".ContentItem---status---w1Me0")[::2]
-        titles = self.browser.find_elements(By.CSS_SELECTOR,".ContentItem---title---kdZSE")
+        videos = self.browser.find_elements(By.CLASS_NAME, 'ContentItem---link---ILx7P')
+        status_span = self.browser.find_elements(By.CSS_SELECTOR, ".ContentItem---status---w1Me0")[::2]
+        titles = self.browser.find_elements(By.CSS_SELECTOR, ".ContentItem---title---kdZSE")
         video_titles = []
         for title in titles:
             title_text = title.find_element(By.XPATH,
-        "./child::*").find_elements(By.XPATH,"./child::*")[0].text
+                                            "./child::*").find_elements(By.XPATH, "./child::*")[0].text
             video_titles.append(title_text)
-        print("Removing watched videos from course")
+        print(self.prefix +"Removing watched videos from course")
         unwatched_videos = []
-        for i in range(0, len(status_span) -2):
-            status_text = status_span[i].find_element(By.XPATH,"./child::*").text
-            if(status_text != 'WATCHED'):
+        for i in range(0, len(status_span) - 1):
+            status_text = status_span[i].find_element(By.XPATH, "./child::*").text
+            if (status_text != 'WATCHED'):
                 unwatched_videos.append(videos[i])
 
         links_hrefs = [link.get_attribute('href') for link in unwatched_videos]
-        for i in range(0,len(links_hrefs) - 2) :
-            print("Accessing video : " + video_titles[i])
+        for i in range(0, len(links_hrefs) - 2):
+            print(self.prefix + "Accessing video : " + video_titles[i])
             self.get_video(links_hrefs[i])
             WebDriverWait(self.browser, 5).until(
-                  EC.presence_of_element_located((By.CSS_SELECTOR, ".vjs-play-control.vjs-control.vjs-button")))
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".vjs-play-control.vjs-control.vjs-button")))
             play = self.browser.find_elements(By.CSS_SELECTOR, '.vjs-play-control.vjs-control.vjs-button')
             play[0].click()
             sleep(1)
             play[0].send_keys(Keys.PAGE_DOWN)
 
             # Gotta go fast
-            self.browser.find_element('id','video-player-settings-button').click()
+            self.browser.find_element('id', 'video-player-settings-button').click()
 
             sleep(1)
 
-            self.browser.find_element('id','speed').click()
+            self.browser.find_element('id', 'speed').click()
 
             sleep(1)
 
-            self.browser.find_element("xpath","//span[@id='current_value_prefix'][text()='2']").click()
-            print("Watching video with double speed")
+            self.browser.find_element("xpath", "//span[@id='current_value_prefix'][text()='2']").click()
+            print(self.prefix + "Watching video with double speed")
 
-            duration = self.browser.find_element(By.CLASS_NAME,"vjs-duration-display").text
+            duration = self.browser.find_element(By.CLASS_NAME, "vjs-duration-display").text
             duration_seconds = (sum(x * int(t) for x, t in zip([1, 60, 3600], reversed(duration.split(":")))) + 5) / 2
-            print("Sleeping until end of video for current course for " + str(duration_seconds ) + " seconds")
+            print(self.prefix + "Sleeping until end of video for current course for " + str(duration_seconds) + " "
+                                                                                                                "seconds")
             sleep(duration_seconds)
-            print("Finished watching the video "+ video_titles[i])
-        print("Videos for current course watched")
+            print(self.prefix + "Finished watching the video " + video_titles[i])
+        print(self.prefix + "Videos for current course watched")
+        return links_hrefs[1]
+
+    def get_course_name(self):
+        return self.browser.find_element(By.CLASS_NAME, "MediaTitleV2---titleHeader---xIfCJ").text
 
     def get_completion_status(self) -> bool:
         div_completion_all = self.browser.find_element_by_xpath("//div[@class='ProgressBar---trail---3y2hW']")
@@ -144,421 +153,93 @@ class Tools:
 
         return actual_width == total_width
 
-    def check_for_test(self) -> str:
-        link_to_test = ''
+    def pass_test(self) -> bool:
+        print(self.prefix + "Starting test")
+        test_answers = []
+        WebDriverWait(self.browser, 5).until(
+            EC.presence_of_element_located((By.XPATH, "//a[@data-marker='takeTestFromAssessmentLaunchPage']"))).click()
 
-        if self.check_exists_by_xpath("//a[@class='Button---root---2BQqW Button---primary---1O3lq Button---"
-                                      "medium---1CC5_ Button---center---13Oaw']"):
-            test_btn = self.browser.find_element_by_xpath("//a[@class='Button---root---2BQqW Button---primary---"
-                                                          "1O3lq Button---medium---1CC5_ Button---center---13Oaw']")
-
-            return test_btn.get_attribute('href')
-
-        return link_to_test
-
-    def passing_test(self) -> bool:
-        print("Début du Test")
-
-        sleep(2)
-
-        # Checking si déja passé
-        if self.test_is_passed() is False:
-
-            sleep(2)
-
-            # Si test en cours continue
-            if self.check_exists_by_xpath("//a[@id='assessment-continue']"):
-                btn_launch = self.browser.find_element_by_xpath("//a[@id='assessment-continue']")
-
-            # Sinon nouveau test
-            elif self.check_exists_by_xpath("//button[@class='Button---root---2BQqW Button---primary---1O3lq Button---"
-                                            "small---3PMLN Button---center---13Oaw']"):
-                btn_launch = self.browser.find_element_by_xpath(
-                    "//button[@class='Button---root---2BQqW Button---primary--"
-                    "-1O3lq Button---small---3PMLN Button---center---13Oaw']")
+        WebDriverWait(self.browser, 3).until(
+            EC.presence_of_element_located((By.XPATH, "//button[@data-marker='courseAssessmentStart']"))).click()
+        end_test = False
+        while not end_test:
+            WebDriverWait(self.browser, 5).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "LabeledMessage---labeledMessage---1qn6X")))
+            question = self.browser.find_element(By.CLASS_NAME, "LabeledMessage---labeledMessage---1qn6X").text.strip()
+            instruction = self.browser.find_element(By.XPATH,
+                                                    "//div[@class='MessageBar---instruction---3-J99']").text.strip()
+            answers = []
+            print(self.prefix +"Finding answers for " + question)
+            if instruction == "Instruction: Choose the option that best answers the question.":
+                self.find_radio_answers(answers, question, test_answers)
+            elif instruction == "Instruction: Choose all options that best answer the question.":
+                self.find_checkbox_answers(answers, question, test_answers)
             else:
-                btn_launch = self.browser.find_element_by_xpath("//button[@class='Button---root---2BQqW "
-                                                                "Button---primary---1O3lq Button---small---3PMLN "
-                                                                "Button---center---13Oaw']")
-            btn_launch.click()
+                options = self.browser.find_elements(By.XPATH, "//ul[@class='Matching---ul---bIrQZ']")[0].text.split("\n")
+                letter_answer_map = {}
+                for i in range(1, len(options)):
+                    split_text = options[i].split(":")
+                    letter_answer_map[split_text[0]] = split_text[1]
+                print(letter_answer_map)
+                options = self.browser.find_elements(By.CLASS_NAME, "Matching---choiceTitle---3ENuZ")
+                print(options[0].find_element(By.XPATH,
+                                                                      "./child::*").text)
+                for i in range(0, len(options)):
+                    print(self.prefix + options[i].text)
+                options_by_category = self.browser.find_elements(By.CSS_SELECTOR,
+                                                                ".Checkbox---checkboxContainer---2Hz1S."
+                                                                      "Checkbox---spaced---1d8os")
+                for i in range(0, len(options_by_category)):
+                    print(options_by_category[i].text)
+                exit()
+        test_passed = False
+        if test_passed is False:
+            self.pass_test()
 
-            sleep(2)
-
-            end_test = False
-
-            while not end_test:
-
-                sleep(2)
-
-                course_title = self.browser.find_element_by_xpath("//h1[@class='PageHeading---title---13psX']").text
-
-                question = self.browser.find_element_by_xpath("//div[@class='QuestionMessages---stem---2uUKi']").text
-
-                instruction = self.browser.find_element_by_xpath(
-                    "//div[@class='MessageBar---instruction---3-J99']").text
-
-                advancement = self.browser.find_element_by_xpath("//p[@class='PageHeading---subtitle---QX7Ls']").text
-
-                # calcul de l'avancement
-
-                current_question_pos_start = advancement.index(' ')
-
-                current_question_pos_end = advancement.index(' ', current_question_pos_start + 1)
-
-                current_question = advancement[current_question_pos_start + 1: current_question_pos_end]
-
-                max_question_pos_start = advancement.index('sur ')
-
-                max_question = advancement[max_question_pos_start + len('sur '):]
-
-                end_test = max_question == current_question
-
-                with open("test_answer.json", "r") as jsonFile:
-                    test_answer = json.load(jsonFile)
-
-                # Si le cours n'est pas connu dans le fichier de réponse
-                # On ajoute le titre du cours à notre fichier de réponse
-                if course_title not in test_answer:
-                    test_answer[course_title] = {}
-
-                # Si la question n'est pas connu dans le cours
-                # On l'ajoute au cours
-                if question not in test_answer[course_title]:
-                    test_answer[course_title][question] = None
-
-                answer_input_id = test_answer[course_title][question]
-
-                # Si la réponse est pas encore connu
-                if answer_input_id is None:
-                    # Appel de la bonne question en fonction de l'instruction
-                    if instruction == "Instruction : Choisissez toutes les options qui répondent le mieux à la question. ":
-                        test_answer[course_title][question] = self.find_answer_checkbox()
-
-                    elif instruction == "Instruction : Choisissez l'option qui répond le mieux à la question. ":
-                        test_answer[course_title][question] = self.find_answer_radio_button()
-
-                    elif instruction == "Instruction : Classez les éléments suivants " \
-                                        "dans le bon ordre. Faites glisser avec" \
-                                        " la souris, ou appuyez sur Tab pour effectuer" \
-                                        " une sélection et utilisez les touches" \
-                                        " fléchées haut et bas. ":
-                        test_answer[course_title][question] = self.find_answer_order()
-
-                    elif instruction == "Instruction : Associez chaque option à sa cible correcte. " \
-                                        "Chaque catégorie peut avoir plusieurs correspondances. ":
-                        test_answer[course_title][question] = self.find_associated_answer()
-
-                    # Par défaut
-                    else:
-                        print("Réponse pas encore gérée")
-                        exit(0)
-
-                # Si on connait la réponse
-                else:
-                    # Appel de la bonne question en fonction de l'instruction
-                    if instruction == "Instruction : Choisissez toutes les " \
-                                      "options qui répondent le mieux à la question. ":
-                        self.click_answer_checkbox(answer_input_id)
-
-                    elif instruction == "Instruction : Choisissez l'option qui répond le mieux à la question. ":
-                        id_check = self.click_answer_radio_button(answer_input_id)
-
-                        if id_check != answer_input_id:
-                            test_answer[course_title][question] = id_check
-
-                    elif instruction == "Instruction : Classez les éléments suivants " \
-                                        "dans le bon ordre. Faites glisser avec" \
-                                        " la souris, ou appuyez sur Tab pour effectuer" \
-                                        " une sélection et utilisez les touches" \
-                                        " fléchées haut et bas. ":
-                        self.click_answer_order(answer_input_id)
-
-                    elif instruction == "Instruction : Associez chaque option à sa cible correcte. " \
-                                        "Chaque catégorie peut avoir plusieurs correspondances. ":
-                        self.click_associated_answer(answer_input_id)
-
-                    # Par défaut
-                    else:
-                        print("Réponse pas encore gérée")
-                        exit(0)
-
-                # On enregistre dans le json
-                with open("test_answer.json", "w") as jsonFile:
-                    json.dump(test_answer, jsonFile)
-
-                if end_test:
-                    self.browser.find_element_by_xpath("//a[@class='Button---root---2BQqW Button---primary---1O3lq "
-                                                       "Button---small---3PMLN Button---center---13Oaw']").click()
-                else:
-                    self.browser.find_element_by_xpath(
-                        "//button[@class='Button---root---2BQqW Button---primary---1O3lq "
-                        "Button---small---3PMLN Button---center---13Oaw']").click()
-
-            sleep(4)
-
-            test_passed = self.test_is_passed()
-
-            if test_passed is False:
-                self.passing_test()
-
-        print("Fin du test")
-
+        print(self.prefix + "Fin du test")
         return True
 
-    def find_answer_radio_button(self) -> str:
-        input_class = "RadioButton---input---3iHUk"
-
-        # Un element cache l'input donc on va clicker sur l'element au dessus
-        elem_to_click = self.browser.find_element_by_xpath("//input[@class='" + input_class + "']/following-sibling"
-                                                                                              "::span")
-        elem_to_click.click()
-
-        sleep(2)
-
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-        # On récupère la bonne réponse
-
-        input_good_answer = self.browser.find_element_by_xpath("//div[@class='Question---option---UEIWm "
-                                                               "Question---correct---HaOFo']"
-                                                               "//input[@class='" + input_class + "']")
-
-        id_good_answer = input_good_answer.get_attribute('id')
-
-        return id_good_answer
-
-    def click_answer_radio_button(self, id_answer):
-        # On prend le bon input
-        # Un element cache l'input donc on va clicker sur l'element au dessus
-        elem_to_click = self.browser.find_element_by_xpath("//input[@id='" + id_answer + "']/following-sibling::span")
-
-        elem_to_click.click()
-
-        sleep(2)
-
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-        # On récupère la bonne réponse
-        div_good_answer = self.browser.find_element_by_xpath("//div[@class='Question---option---UEIWm "
-                                                             "Question---correct---HaOFo']")
-
-        input_good_answer = div_good_answer.find_element_by_xpath("//input[@class='RadioButton---input---3iHUk']")
-
-        id_good_answer = input_good_answer.get_attribute('id')
-
-        return id_good_answer
-
-    def find_answer_checkbox(self) -> list:
-        input_class = "Checkbox---input---e73Wy"
-
-        # On prend le premier input
-        # Un element cache l'input donc on va clicker sur l'element au dessus
-        elem_to_click = self.browser.find_element_by_xpath("//input[@class='" + input_class + "']/following-sibling"
-                                                                                              "::span")
-        elem_to_click.click()
-
-        sleep(2)
-
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-        div_good_answers = self.browser.find_elements_by_xpath("//div[@class='Question---option---UEIWm "
-                                                               "Question---correct---HaOFo']")
-
-        list_id_answers = []
-
-        for div_good_answer in div_good_answers:
-            input_good_answer = div_good_answer.find_element_by_tag_name("input")
-
-            id_good_answer = input_good_answer.get_attribute('id')
-
-            list_id_answers.append(id_good_answer)
-
-        return list_id_answers
-
-    def click_answer_checkbox(self, list_id_answer):
-        for id_answer in list_id_answer:
-            # On prend le bon input
-            # Un element cache l'input donc on va clicker sur l'element au dessus
-            elem_to_click = self.browser.find_element_by_xpath("//input[@id='" + id_answer + "']"
-                                                                                             "/following-sibling::span")
-
-            elem_to_click.click()
-
-            sleep(1.2)
-
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-    def find_answer_order(self):
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-        # On récupère les réponses dans l'ordre
-        ol_answer = self.browser.find_element_by_xpath("//ol[@class='SortableList---container---127Xo']")
-
-        lis_answer = ol_answer.find_elements_by_tag_name('li')
-
-        pos = 1
-
-        answer_order = {}
-
-        for li_answer in lis_answer:
-
-            content = li_answer.text
-            answer = content[:content.index("\n")]
-
-            if "Bonne réponse." in content:
-                answer_order[pos] = answer
-                pos += 1
-            else:
-                pos_answer_corrected_in_text = content.index("le numéro doit être ")
-                pos_answer_corrected = content[pos_answer_corrected_in_text +
-                                               len("le numéro doit être "):len(content) - 1]
-
-                answer_order[int(pos_answer_corrected)] = answer
-
-        return answer_order
-
-    def click_answer_order(self, answer_order):
-        key_sorted = sorted(answer_order.keys())
-
-        for answer in key_sorted:
-            lis_answer = self.browser.find_elements_by_xpath("//ol[@class='SortableList---container---127Xo']//li")
-            sleep(1)
-
-            self.browser.find_element_by_xpath("//div[@class='MessageBar---instruction---3-J99']").click()
-
-            sleep(1)
-
-            nbr_tab = 1
-
-            for li in lis_answer:
-                if li.text == answer_order[answer]:
-
-                    actions = ActionChains(self.browser)
-
-                    actions_first_tabs = actions.send_keys(Keys.TAB)
-                    actions_first_tabs.perform()
-
-                    sleep(1)
-
-                    for x in range(1, nbr_tab):
-                        actions = ActionChains(self.browser)
-
-                        actions_tabs = actions.send_keys(Keys.TAB)
-                        actions_tabs.perform()
-
-                        sleep(1)
-
-                    if nbr_tab > int(answer):
-                        while nbr_tab > int(answer):
-                            actions = ActionChains(self.browser)
-                            actions_up = actions.send_keys(Keys.ARROW_UP)
-                            actions_up.perform()
-                            sleep(1)
-
-                            nbr_tab -= 1
-                    else:
-                        while nbr_tab < int(answer):
-                            actions = ActionChains(self.browser)
-                            actions_down = actions.send_keys(Keys.ARROW_DOWN)
-                            actions_down.perform()
-                            sleep(1)
-
-                            nbr_tab += 1
-
-                nbr_tab += 1
-
-            sleep(2)
-
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-    def find_associated_answer(self):
-        result_to_return = {}
-
-        self.browser.find_element_by_xpath("//div[@class='Checkbox---label---34dtp Checkbox---spaced---1d8os']").click()
-
-        sleep(1)
-
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-        # On récupère toutes les options
-        options = self.browser.find_element_by_xpath("//ul[@class='Matching---ul---bIrQZ']")
-
-        dict_letter_answer = {}
-
-        for li in options.find_elements_by_xpath("//li[@class='Matching---option---1L906']"):
-            content = li.text
-
-            letter = content[:content.index(':')]
-
-            answer = content[content.index(':') + 1:]
-
-            dict_letter_answer[letter] = answer
-
-        matching_choices = self.browser.find_elements_by_xpath("//fieldset")
-
-        for div in matching_choices:
-            title = div.text[:div.text.index('\n')]
-
-            result_to_return[title] = []
-
-            correct_answer = div.text[div.text.index("Mauvaises réponses. ") +
-                                      len("Mauvaises réponses. "):
-                                      div.text.index(" sont les bonnes réponses.")]
-
-            correct_answer = correct_answer.replace(' ', '')
-
-            correct_answer = correct_answer.split(',')
-
-            for item in correct_answer:
-                result_to_return[title].append(dict_letter_answer[item])
-
-        return result_to_return
-
-    def click_associated_answer(self, answer_input_id):
-        # On récupère toutes les options
-        options = self.browser.find_element_by_xpath("//ul[@class='Matching---ul---bIrQZ']")
-
-        for li in options.find_elements_by_xpath("//li[@class='Matching---option---1L906']"):
-            content = li.text
-
-            letter = content[:content.index(':')]
-
-            answer = content[content.index(':') + 1:]
-
-            for key in answer_input_id:
-                if answer in answer_input_id[key]:
-                    print("in if")
-                    # Trouve la bonne div et la bonne lettre et clique dessus
-                    self.browser.find_element_by_xpath("//span[text()='"
-                                                       + key + "']/parent::legend/following-sibling::div"
-                                                               "//span[text()='" + letter + "']").click()
-
-        # On valide la réponse
-        self.browser.find_element_by_xpath("//div[@class='Question---verifyButton---1y8Gq']").click()
-
-        sleep(2)
-
-    def test_is_passed(self):
-        return self.check_exists_by_xpath("//div[@class='Assessment---scoreContainer---HkhoZ "
-                                          "Assessment---assessmentPassed---1IIXl']")
+    def find_checkbox_answers(self, answers, question, test_answers):
+        options = self.browser.find_elements(By.CSS_SELECTOR, ".Checkbox---checkboxContainer---2Hz1S."
+                                                              "Checkbox---spaced---1d8os")
+        text_options = []
+        for i in range(0, len(options)):
+            text_options.append(options[i].text)
+        options[0].click()
+        self.verify_answers()
+        WebDriverWait(self.browser, 5).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "ValidationMark---multipleChoiceAnswer---AWXKG")))
+        possible_answers = self.browser.find_elements(By.CLASS_NAME, "ValidationMark---multipleChoiceAnswer---AWXKG")
+        for i in range(0, len(possible_answers)):
+            if "Sorry, you should have selected this option." in possible_answers[
+                i].text.strip() or "Good job, you selected this correct option." in possible_answers[i].text:
+                answers.append(text_options[i])
+        this_question = {"question": copy(question), "answers": copy(answers)}
+        test_answers.append(this_question)
+        answers.clear()
+        next_question_button = self.browser.find_element(By.XPATH, "//button[@data-marker='LP.assessments.next']")
+        next_question_button.click()
+
+    def find_radio_answers(self, answers, question, test_answers):
+        options = self.browser.find_elements(By.CSS_SELECTOR, ".RadioButton---label---1dtPw."
+                                                              "RadioButton---spaced---aeCFF")
+        text_options = []
+        for i in range(0, len(options)):
+            text_options.append(options[i].text)
+        ActionChains(self.browser).move_to_element(options[0]).click().perform()
+        self.verify_answers()
+        WebDriverWait(self.browser, 5).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".Question---option---UEIWm.Question---correct---HaOFo")))
+        answer = self.browser.find_element(By.CSS_SELECTOR,
+                                           ".Question---option---UEIWm.Question---correct---HaOFo").text.strip()
+        for i in range(0, len(options)):
+            if options[i].text.strip() == answer:
+                answers.append(text_options[i])
+        this_question = {"question": copy(question), "answers": copy(answers)}
+        test_answers.append(this_question)
+        answers.clear()
+        next_question_button = self.browser.find_element(By.XPATH, "//button[@data-marker='LP.assessments.next']")
+        next_question_button.click()
+
+    def verify_answers(self):
+        self.browser.find_element(By.XPATH, "//button[@data-marker='LP.assessments.verify']").click()
